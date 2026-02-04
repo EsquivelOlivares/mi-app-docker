@@ -1,45 +1,46 @@
-version: '3.8'
-
 services:
-  # Servicio de la aplicación PHP
+  # APP PHP
   app:
     build: .
+    container_name: app-php
     ports:
-      - "8080:80"  # Mapea puerto 8080 de tu Mac al 80 del contenedor
+      - "8080:80"
     volumes:
-      - ./app:/var/www/html  # Monta tu código local EN VIVO
+      - ./app:/var/www/html
+    environment:
+      - DB_HOST=database
+      - DB_NAME=mi_app
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_HOST=redis
     depends_on:
-      - database  # Espera a que la base de datos esté lista
-    environment:
-      DB_HOST: database  # ¡'database' es el nombre del servicio de abajo!
-      DB_NAME: mi_app_db
-      DB_USER: usuario_app
-      DB_PASSWORD: contraseña_segura_123
-      SHOW_ENV: "false"  # Cambia a "true" para debug
+      - database
+      - redis
     networks:
       - app-network
 
-  # Servicio de PostgreSQL
+  # POSTGRESQL (CONTRASEÑAS SIMPLES)
   database:
-    image: postgres:15-alpine  # PostgreSQL 15 (versión Alpine = ligera)
+    image: postgres:15-alpine
+    container_name: postgres-db
     environment:
-      POSTGRES_DB: mi_app_db
-      POSTGRES_USER: usuario_app
-      POSTGRES_PASSWORD: contraseña_segura_123
+      POSTGRES_DB: mi_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Persistencia de datos
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Script inicial
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"  # Acceso directo desde tu Mac (opcional)
+      - "5432:5432"
     networks:
       - app-network
 
-  # phpPgAdmin - Interfaz web para PostgreSQL (OPCIONAL)
+  # PHP PG ADMIN
   phppgadmin:
     image: dpage/pgadmin4
+    container_name: pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "8081:80"
     depends_on:
@@ -47,11 +48,36 @@ services:
     networks:
       - app-network
 
-# Volúmenes para persistencia
-volumes:
-  postgres_data:
+  # REDIS
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
 
-# Red para que los servicios se comuniquen
+  # REDIS ADMIN
+  redis-admin:
+    image: erikdubbelboer/phpredisadmin
+    container_name: redis-admin
+    ports:
+      - "8082:80"
+    environment:
+      - REDIS_1_HOST=redis
+      - REDIS_1_NAME=LocalRedis
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
