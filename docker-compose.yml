@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Servicio de la aplicación PHP
+  app:
+    build: .
+    ports:
+      - "8080:80"  # Mapea puerto 8080 de tu Mac al 80 del contenedor
+    volumes:
+      - ./app:/var/www/html  # Monta tu código local EN VIVO
+    depends_on:
+      - database  # Espera a que la base de datos esté lista
+    environment:
+      DB_HOST: database  # ¡'database' es el nombre del servicio de abajo!
+      DB_NAME: mi_app_db
+      DB_USER: usuario_app
+      DB_PASSWORD: contraseña_segura_123
+      SHOW_ENV: "false"  # Cambia a "true" para debug
+    networks:
+      - app-network
+
+  # Servicio de PostgreSQL
+  database:
+    image: postgres:15-alpine  # PostgreSQL 15 (versión Alpine = ligera)
+    environment:
+      POSTGRES_DB: mi_app_db
+      POSTGRES_USER: usuario_app
+      POSTGRES_PASSWORD: contraseña_segura_123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persistencia de datos
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Script inicial
+    ports:
+      - "5432:5432"  # Acceso directo desde tu Mac (opcional)
+    networks:
+      - app-network
+
+  # phpPgAdmin - Interfaz web para PostgreSQL (OPCIONAL)
+  phppgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8081:80"
+    depends_on:
+      - database
+    networks:
+      - app-network
+
+# Volúmenes para persistencia
+volumes:
+  postgres_data:
+
+# Red para que los servicios se comuniquen
+networks:
+  app-network:
+    driver: bridge
