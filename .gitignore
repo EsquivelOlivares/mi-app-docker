@@ -1,17 +1,39 @@
+# Environment
+.env
+.env.local
+.env.production
+
 # Docker
-**/.dockerignore
+docker-compose.override.yml
 
 # Logs
+logs/
 *.log
 
-# Editor
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Sistema
+# OS
 .DS_Store
 Thumbs.db
 
-# Entorno
-.env
-.env.local
+# Node (si aplica)
+node_modules/
+npm-debug.log*
+
+# PHP
+vendor/
+composer.lock
+
+# Backup files
+*.backup
+*.sql
+*.rdb
+dump.rdb
+
+# Runtime
+tmp/
+temp/
