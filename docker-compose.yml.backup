@@ -14,20 +14,17 @@ services:
       - DB_PASSWORD=postgres
       - REDIS_HOST=redis
     depends_on:
-      database:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - database
+      - redis
     networks:
       - app-network
 
-  # POSTGRESQL - CON INICIALIZACIÓN GARANTIZADA
+  # POSTGRESQL
   database:
     image: postgres:15-alpine
     container_name: postgres-db
-    restart: always
     environment:
-      POSTGRES_DB: mi_app           # ¡ESTA LÍNEA CREA LA DB AUTOMÁTICAMENTE!
+      POSTGRES_DB: mi_app
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
@@ -37,30 +34,19 @@ services:
       - "5432:5432"
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d mi_app"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
-  # PHP PG ADMIN - CONEXIÓN AUTOMÁTICA MEJORADA
+  # PHP PG ADMIN
   phppgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin
-    restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_DEFAULT_SERVER: database
-      PGADMIN_DEFAULT_SERVER_PORT: 5432
-      PGADMIN_DEFAULT_SERVER_USERNAME: postgres
-      PGADMIN_DEFAULT_SERVER_PASSWORD: postgres
-      PGADMIN_DEFAULT_SERVER_MAINTENANCE_DB: mi_app
     ports:
       - "8081:80"
     depends_on:
-      database:
-        condition: service_healthy
+      - database
     networks:
       - app-network
 
@@ -68,7 +54,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis-cache
-    restart: always
     ports:
       - "6379:6379"
     volumes:
@@ -81,7 +66,6 @@ services:
   redis-admin:
     image: erikdubbelboer/phpredisadmin
     container_name: redis-admin
-    restart: always
     ports:
       - "8082:80"
     environment:
