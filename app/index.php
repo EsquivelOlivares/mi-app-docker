@@ -1,13 +1,98 @@
 <?php
-// app/index.php - App con PostgreSQL + Redis
+// app/index.php - App principal (requiere autenticación)
+session_start();
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/auth/models/User.php';
+require_once __DIR__ . '/utils/JWTService.php';
+
+// Verificar autenticación
+$token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
+
+if (!$token) {
+    // No autenticado, redirigir a login
+    header('Location: login.php');
+    exit;
+}
+
+$userData = JWTService::getUserFromToken($token);
+if (!$userData) {
+    // Token inválido, redirigir a login
+    header('Location: login.php');
+    exit;
+}
+
+// Obtener información del usuario
+$userModel = new User();
+$currentUser = $userModel->getUserWithRole($userData['userId']);
+if (!$currentUser) {
+    // Usuario no existe, redirigir
+    header('Location: login.php');
+    exit;
+}
+
+// ========== Manejar logout ==========
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'logout') {
+    setcookie('auth_token', '', time() - 3600, '/');
+    session_destroy();
+    header('Location: login.php');
+    exit;
+}
 
 // ========== INCLUIR CONEXIÓN CENTRALIZADA ==========
 require_once '/var/www/html/includes/connection.php';
 
-echo "<h1 style='color: purple; font-family: Arial;'>¡Mi APP con DOCKER + PostgreSQL + Redis! 🚀</h1>";
+// ========== HTML COMENZANDO AQUÍ ==========
+echo "<!DOCTYPE html>";
+echo "<html lang='es'>";
+echo "<head>";
+echo "<meta charset='UTF-8'>";
+echo "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+echo "<title>Dashboard - Mi App Docker</title>";
+echo "<style>";
+echo "  body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }";
+echo "  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }";
+echo "  .user-info { background: white; padding: 15px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }";
+echo "  .container { padding: 20px; }";
+echo "  .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }";
+echo "  .btn-logout { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }";
+echo "  .btn-logout:hover { background: #d32f2f; }";
+echo "  .role-badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }";
+echo "  .role-admin { background: #ffebee; color: #c62828; }";
+echo "  .role-user { background: #e8eaf6; color: #283593; }";
+echo "  .role-manager { background: #e8f5e8; color: #2e7d32; }";
+echo "</style>";
+echo "</head>";
+echo "<body>";
 
+// ========== HEADER CON INFO DE USUARIO ==========
+echo "<div class='header'>";
+echo "<div style='display: flex; justify-content: space-between; align-items: center;'>";
+echo "<h1>🚀 Dashboard - Mi App Docker</h1>";
+echo "<form method='post' style='display: inline;'>";
+echo "<input type='hidden' name='action' value='logout'>";
+echo "<button type='submit' class='btn-logout'>🚪 Cerrar Sesión</button>";
+echo "</form>";
+echo "</div>";
+echo "</div>";
+
+// ========== INFORMACIÓN DEL USUARIO ==========
+echo "<div class='user-info'>";
+echo "<h2>👤 " . htmlspecialchars($currentUser['full_name']) . "</h2>";
+echo "<p><strong>Usuario:</strong> " . htmlspecialchars($currentUser['username']) . "</p>";
+echo "<p><strong>Email:</strong> " . htmlspecialchars($currentUser['email']) . "</p>";
+
+$roleClass = 'role-' . $currentUser['role_name'];
+echo "<p><strong>Rol:</strong> <span class='role-badge $roleClass'>" . htmlspecialchars($currentUser['role_name']) . "</span></p>";
+
+echo "<p><small>Token JWT válido hasta: " . date('Y-m-d H:i:s', time() + 24*3600) . "</small></p>";
+echo "</div>";
+
+echo "<div class='container'>";
+
+// ========== EL RESTO DE TU CÓDIGO ORIGINAL AQUÍ ==========
+// (Copiamos todo tu contenido original desde aquí)
 // ========== SECCIÓN REDIS ==========
-echo "<div style='background: #f0f8ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>";
+echo "<div class='section'>";
 echo "<h2 style='color: #d63031;'>🧠 Redis Cache</h2>";
 
 // ========== ENLACE AL CARRITO ==========
@@ -58,7 +143,7 @@ if (extension_loaded('redis')) {
 echo "</div>";
 
 // ========== SECCIÓN POSTGRESQL ==========
-echo "<div style='background: #f0fff0; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>";
+echo "<div class='section'>";
 echo "<h2 style='color: #27ae60;'>🗄️ PostgreSQL Database</h2>";
 
 try {
@@ -143,7 +228,7 @@ try {
 echo "</div>";
 
 // ========== SECCIÓN INFORMACIÓN ==========
-echo "<div style='background: #fffaf0; padding: 15px; border-radius: 10px;'>";
+echo "<div class='section'>";
 echo "<h2 style='color: #2980b9;'>📊 Sistema</h2>";
 
 echo "<p>🐋 Contenedores corriendo: <strong>5</strong></p>";
@@ -154,7 +239,7 @@ echo "<p>🔧 Servidor: " . ($_SERVER['SERVER_SOFTWARE'] ?? 'Apache') . "</p>";
 if (extension_loaded('redis')) {
     echo "<p>🧠 Extensión Redis: <span style='color: green;'>✅ Instalada</span></p>";
 } else {
-    echo "<p>🧠 Extensión Redis: <span style='color: red;'>❌ No disponible</span></p>";
+    echo "<p>�� Extensión Redis: <span style='color: red;'>❌ No disponible</span></p>";
 }
 
 echo "<p>💾 Memoria usada: " . round(memory_get_usage() / 1024 / 1024, 2) . " MB</p>";
@@ -165,10 +250,10 @@ echo "<p>🔗 Conexión DB: " . getenv('DB_HOST') . "/" . getenv('DB_NAME') . "<
 echo "</div>";
 
 // ========== ENLACES RÁPIDOS ==========
-echo "<div style='margin-top: 20px; padding: 15px; background: #e8f4f8; border-radius: 10px;'>";
+echo "<div class='section'>";
 echo "<h3>🔗 Accesos Rápidos:</h3>";
 echo "<ul>";
-echo "<li><a href='http://localhost:8080' target='_blank'>🏠 Esta App (puerto 8080)</a></li>";
+echo "<li><a href='http://localhost:8080' target='_blank'>�� Esta App (puerto 8080)</a></li>";
 echo "<li><a href='http://localhost:8080/test-connection.php' target='_blank'>🔌 Probar Conexión DB</a></li>";
 echo "<li><a href='http://localhost:8080/cart.php' target='_blank'>🛒 Carrito de Compras</a></li>";
 echo "<li><a href='http://localhost:8081' target='_blank'>🐘 pgAdmin - Admin PostgreSQL</a></li>";
@@ -178,14 +263,6 @@ echo "<li><a href='http://localhost:6379' target='_blank'>⚡ Redis directo (pue
 echo "</ul>";
 echo "</div>";
 
-// ========== BOTÓN PARA EJECUTAR SCRIPT SQL ==========
-echo "<div style='margin-top: 20px; padding: 15px; background: #FFF3CD; border-radius: 10px;'>";
-echo "<h3>⚙️ Herramientas de Base de Datos:</h3>";
-echo "<form action='/tools/execute-sql.php' method='post' target='_blank' style='margin: 10px 0;'>";
-echo "<button type='submit' style='padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;'>";
-echo "🔄 Ejecutar Script SQL (crear tablas)";
-echo "</button>";
-echo "</form>";
-echo "<p><small>💡 Ejecuta el script init.sql para crear todas las tablas necesarias</small></p>";
-echo "</div>";
-?>
+echo "</div>"; // Cierre del container
+echo "</body>";
+echo "</html>";

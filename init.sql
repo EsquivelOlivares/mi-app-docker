@@ -70,3 +70,5 @@ CREATE TABLE orden_items (
 -- 7. ÍNDICES
 CREATE INDEX idx_productos_categoria ON productos(categoria);
 CREATE INDEX idx_productos_precio ON productos(precio);
+
+
