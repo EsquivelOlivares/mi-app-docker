@@ -1,5 +1,5 @@
 <?php
-// app/index.php - App principal (requiere autenticación)
+// app/index.php - Dashboard con Bootstrap
 session_start();
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/auth/models/User.php';
@@ -9,14 +9,12 @@ require_once __DIR__ . '/utils/JWTService.php';
 $token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
 
 if (!$token) {
-    // No autenticado, redirigir a login
     header('Location: login.php');
     exit;
 }
 
 $userData = JWTService::getUserFromToken($token);
 if (!$userData) {
-    // Token inválido, redirigir a login
     header('Location: login.php');
     exit;
 }
@@ -25,15 +23,6 @@ if (!$userData) {
 $userModel = new User();
 $currentUser = $userModel->getUserWithRole($userData['userId']);
 if (!$currentUser) {
-    // Usuario no existe, redirigir
-    header('Location: login.php');
-    exit;
-}
-
-// ========== Manejar logout ==========
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'logout') {
-    setcookie('auth_token', '', time() - 3600, '/');
-    session_destroy();
     header('Location: login.php');
     exit;
 }
@@ -41,228 +30,430 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // ========== INCLUIR CONEXIÓN CENTRALIZADA ==========
 require_once '/var/www/html/includes/connection.php';
 
-// ========== HTML COMENZANDO AQUÍ ==========
-echo "<!DOCTYPE html>";
-echo "<html lang='es'>";
-echo "<head>";
-echo "<meta charset='UTF-8'>";
-echo "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
-echo "<title>Dashboard - Mi App Docker</title>";
-echo "<style>";
-echo "  body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }";
-echo "  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }";
-echo "  .user-info { background: white; padding: 15px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }";
-echo "  .container { padding: 20px; }";
-echo "  .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }";
-echo "  .btn-logout { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }";
-echo "  .btn-logout:hover { background: #d32f2f; }";
-echo "  .role-badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }";
-echo "  .role-admin { background: #ffebee; color: #c62828; }";
-echo "  .role-user { background: #e8eaf6; color: #283593; }";
-echo "  .role-manager { background: #e8f5e8; color: #2e7d32; }";
-echo "</style>";
-echo "</head>";
-echo "<body>";
+// Configuración para el layout
+$pageTitle = "Dashboard - Mi App Docker";
 
-// ========== HEADER CON INFO DE USUARIO ==========
-echo "<div class='header'>";
-echo "<div style='display: flex; justify-content: space-between; align-items: center;'>";
-echo "<h1>🚀 Dashboard - Mi App Docker</h1>";
-echo "<form method='post' style='display: inline;'>";
-echo "<input type='hidden' name='action' value='logout'>";
-echo "<button type='submit' class='btn-logout'>🚪 Cerrar Sesión</button>";
-echo "</form>";
-echo "</div>";
-echo "</div>";
+// Capturar el contenido
+ob_start();
+?>
+<!-- Dashboard Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                            <i class="fas fa-user fa-2x text-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h4 class="mb-1">�� ¡Hola, <?php echo htmlspecialchars($currentUser['full_name']); ?>!</h4>
+                        <p class="text-muted mb-0">Bienvenido al panel de control de Mi App Docker</p>
+                        <div class="mt-2">
+                            <span class="badge bg-primary me-2">
+                                <i class="fas fa-user-tag me-1"></i><?php echo htmlspecialchars($currentUser['role_name']); ?>
+                            </span>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-clock me-1"></i>Token válido por 24h
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <h6 class="text-muted mb-3">Acciones rápidas</h6>
+                <div class="d-grid gap-2">
+                    <a href="/cart.php" class="btn btn-outline-primary">
+                        <i class="fas fa-shopping-cart me-2"></i>Ir al Carrito
+                    </a>
+                    <form method="post" class="d-grid">
+                        <input type="hidden" name="action" value="logout">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-// ========== INFORMACIÓN DEL USUARIO ==========
-echo "<div class='user-info'>";
-echo "<h2>👤 " . htmlspecialchars($currentUser['full_name']) . "</h2>";
-echo "<p><strong>Usuario:</strong> " . htmlspecialchars($currentUser['username']) . "</p>";
-echo "<p><strong>Email:</strong> " . htmlspecialchars($currentUser['email']) . "</p>";
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-icon text-primary">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h3 class="stat-number">
+                    <?php
+                    try {
+                        $productCount = $pdo->query("SELECT COUNT(*) as total FROM productos")->fetch()['total'] ?? 0;
+                        echo $productCount;
+                    } catch (Exception $e) {
+                        echo "0";
+                    }
+                    ?>
+                </h3>
+                <p class="text-muted mb-0">Productos en DB</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-icon text-success">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <h3 class="stat-number">
+                    <?php
+                    try {
+                        $orderCount = $pdo->query("SELECT COUNT(*) as total FROM ordenes")->fetch()['total'] ?? 0;
+                        echo $orderCount;
+                    } catch (Exception $e) {
+                        echo "0";
+                    }
+                    ?>
+                </h3>
+                <p class="text-muted mb-0">Órdenes totales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-icon text-warning">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <h3 class="stat-number">
+                    <?php
+                    try {
+                        $visitCount = $pdo->query("SELECT COUNT(*) as total FROM visitas")->fetch()['total'] ?? 0;
+                        echo $visitCount;
+                    } catch (Exception $e) {
+                        echo "0";
+                    }
+                    ?>
+                </h3>
+                <p class="text-muted mb-0">Visitas totales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-icon text-danger">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3 class="stat-number">
+                    <?php
+                    if (extension_loaded('redis')) {
+                        try {
+                            $redis = new Redis();
+                            if ($redis->connect('redis-cache', 6379, 2)) {
+                                echo $redis->incr('total_visits');
+                            } else {
+                                echo "0";
+                            }
+                        } catch (Exception $e) {
+                            echo "0";
+                        }
+                    } else {
+                        echo "0";
+                    }
+                    ?>
+                </h3>
+                <p class="text-muted mb-0">Visitas Redis</p>
+            </div>
+        </div>
+    </div>
+</div>
 
-$roleClass = 'role-' . $currentUser['role_name'];
-echo "<p><strong>Rol:</strong> <span class='role-badge $roleClass'>" . htmlspecialchars($currentUser['role_name']) . "</span></p>";
+<div class="row">
+    <!-- Columna Izquierda -->
+    <div class="col-lg-8">
+        <!-- Redis Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Redis Cache</h5>
+                <span class="badge bg-light text-danger">En tiempo real</span>
+            </div>
+            <div class="card-body">
+                <?php
+                $redisConnected = false;
+                if (extension_loaded('redis')) {
+                    try {
+                        $redis = new Redis();
+                        $redisConnected = $redis->connect('redis-cache', 6379, 2);
+                        
+                        if ($redisConnected):
+                ?>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Conexión exitosa</strong>
+                            <p class="mb-0 mt-2">Redis está funcionando correctamente</p>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6><i class="fas fa-chart-line me-2"></i>Estadísticas</h6>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Memoria usada</span>
+                                    <span class="fw-bold">
+                                        <?php 
+                                        $redisInfo = $redis->info();
+                                        echo round(($redisInfo['used_memory'] ?? 0) / 1024 / 1024, 2) . " MB";
+                                        ?>
+                                    </span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Conexiones activas</span>
+                                    <span class="fw-bold"><?php echo $redisInfo['connected_clients'] ?? 0; ?></span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-clock me-2"></i>Cache de ejemplo</h6>
+                                <?php
+                                $cacheKey = 'current_time';
+                                if (!$redis->exists($cacheKey)) {
+                                    $currentTime = date('Y-m-d H:i:s');
+                                    $redis->setex($cacheKey, 5, $currentTime);
+                                    $source = "generado nuevo";
+                                    $badgeClass = "bg-warning";
+                                } else {
+                                    $currentTime = $redis->get($cacheKey);
+                                    $source = "desde cache";
+                                    $badgeClass = "bg-success";
+                                }
+                                ?>
+                                <div class="text-center py-3">
+                                    <div class="display-6 mb-2"><?php echo date('H:i:s', strtotime($currentTime)); ?></div>
+                                    <span class="badge <?php echo $badgeClass; ?>"><?php echo $source; ?></span>
+                                    <p class="text-muted mt-2 small">Actualiza cada 5 segundos</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="http://localhost:8082" target="_blank" class="btn btn-outline-danger">
+                        <i class="fas fa-external-link-alt me-2"></i>Abrir Dashboard de Redis
+                    </a>
+                </div>
+                <?php
+                        else:
+                ?>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Redis no está disponible
+                </div>
+                <?php
+                        endif;
+                    } catch (Exception $e) {
+                ?>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error Redis: <?php echo htmlspecialchars($e->getMessage()); ?>
+                </div>
+                <?php
+                    }
+                } else {
+                ?>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Extensión Redis no disponible en PHP
+                </div>
+                <?php
+                }
+                ?>
+            </div>
+        </div>
 
-echo "<p><small>Token JWT válido hasta: " . date('Y-m-d H:i:s', time() + 24*3600) . "</small></p>";
-echo "</div>";
+        <!-- PostgreSQL Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-database me-2"></i>PostgreSQL Database</h5>
+            </div>
+            <div class="card-body">
+                <?php
+                try {
+                    // Ya tenemos $pdo desde includes/connection.php
+                ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Conexión exitosa</strong>
+                    <p class="mb-0 mt-2">Conectado a: <code><?php echo getenv('DB_NAME'); ?></code></p>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-table me-2"></i>Tablas principales</h6>
+                        <div class="list-group">
+                            <div class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-table text-primary me-2"></i>productos</span>
+                                <span class="badge bg-primary"><?php echo $pdo->query("SELECT COUNT(*) FROM productos")->fetchColumn(); ?> registros</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-table text-success me-2"></i>users</span>
+                                <span class="badge bg-success"><?php echo $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn(); ?> usuarios</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-table text-warning me-2"></i>ordenes</span>
+                                <span class="badge bg-warning"><?php echo $pdo->query("SELECT COUNT(*) FROM ordenes")->fetchColumn(); ?> órdenes</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-bar me-2"></i>Últimas visitas</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $visitas = $pdo->query("SELECT fecha, ip FROM visitas ORDER BY fecha DESC LIMIT 5")->fetchAll();
+                                    foreach ($visitas as $visita):
+                                    ?>
+                                    <tr>
+                                        <td><small><?php echo date('H:i', strtotime($visita['fecha'])); ?></small></td>
+                                        <td><code><?php echo htmlspecialchars($visita['ip']); ?></code></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="http://localhost:8081" target="_blank" class="btn btn-outline-success">
+                        <i class="fas fa-external-link-alt me-2"></i>Abrir pgAdmin
+                    </a>
+                    <a href="/cart.php?action=products" class="btn btn-outline-primary ms-2">
+                        <i class="fas fa-box me-2"></i>Ver Productos
+                    </a>
+                </div>
+                <?php
+                } catch (PDOException $e) {
+                ?>
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle me-2"></i>
+                    <strong>Error de conexión</strong>
+                    <p class="mb-0 mt-2"><?php echo htmlspecialchars($e->getMessage()); ?></p>
+                </div>
+                <?php
+                }
+                ?>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Columna Derecha -->
+    <div class="col-lg-4">
+        <!-- Sistema Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información del Sistema</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="fab fa-docker text-info me-2"></i>Contenedores</span>
+                        <span class="fw-bold">5</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="fab fa-php text-primary me-2"></i>PHP Version</span>
+                        <span class="fw-bold"><?php echo phpversion(); ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="fas fa-server text-secondary me-2"></i>Servidor</span>
+                        <span><?php echo $_SERVER['SERVER_SOFTWARE'] ?? 'Apache'; ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="fas fa-memory text-warning me-2"></i>Memoria usada</span>
+                        <span class="fw-bold"><?php echo round(memory_get_usage() / 1024 / 1024, 2); ?> MB</span>
+                    </li>
+                </ul>
+                
+                <div class="mt-4">
+                    <h6><i class="fas fa-plug me-2"></i>Extensiones cargadas</h6>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <span class="badge <?php echo extension_loaded('redis') ? 'bg-success' : 'bg-danger'; ?>">
+                            Redis <?php echo extension_loaded('redis') ? '✅' : '❌'; ?>
+                        </span>
+                        <span class="badge bg-success">PDO PostgreSQL ✅</span>
+                        <span class="badge bg-success">JSON ✅</span>
+                        <span class="badge bg-success">Session ✅</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-echo "<div class='container'>";
-
-// ========== EL RESTO DE TU CÓDIGO ORIGINAL AQUÍ ==========
-// (Copiamos todo tu contenido original desde aquí)
-// ========== SECCIÓN REDIS ==========
-echo "<div class='section'>";
-echo "<h2 style='color: #d63031;'>🧠 Redis Cache</h2>";
-
-// ========== ENLACE AL CARRITO ==========
-echo "<div style='margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #FF9800, #F57C00); border-radius: 10px; text-align: center;'>";
-echo "<h3>🛒 ¡Nueva Funcionalidad!</h3>";
-echo "<p>Ahora tienes un <strong>carrito de compras completo</strong> usando Redis + PostgreSQL</p>";
-echo "<p><a href='/cart.php' style='display: inline-block; padding: 12px 24px; background: white; color: #FF9800; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px;'>Ir al Carrito</a></p>";
-echo "<p><small>💡 Redis para carrito temporal + PostgreSQL para órdenes permanentes</small></p>";
-echo "</div>";
-
-// Verificar si Redis está disponible
-if (extension_loaded('redis')) {
-    try {
-        $redis = new Redis();
-        $redisConnected = $redis->connect('redis-cache', 6379, 2);
+        <!-- Enlaces rápidos -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-link me-2"></i>Enlaces Rápidos</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="http://localhost:8080" target="_blank" class="list-group-item list-group-item-action">
+                        <i class="fas fa-home me-2"></i>Esta App (puerto 8080)
+                    </a>
+                    <a href="http://localhost:8080/test-connection.php" target="_blank" class="list-group-item list-group-item-action">
+                        <i class="fas fa-plug me-2"></i>Probar Conexión DB
+                    </a>
+                    <a href="http://localhost:8080/cart.php" target="_blank" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shopping-cart me-2"></i>Carrito de Compras
+                    </a>
+                    <a href="http://localhost:8081" target="_blank" class="list-group-item list-group-item-action">
+                        <i class="fas fa-database me-2"></i>pgAdmin - PostgreSQL
+                    </a>
+                    <a href="http://localhost:8082" target="_blank" class="list-group-item list-group-item-action">
+                        <i class="fas fa-bolt me-2"></i>Redis Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
         
-        if ($redisConnected) {
-            echo "<p style='color: green;'>✅ ¡Conexión a Redis exitosa!</p>";
-            
-            // Contador de visitas en Redis
-            $redisVisits = $redis->incr('total_visits');
-            echo "<p>👥 Visitas totales (Redis): <strong>$redisVisits</strong></p>";
-            
-            // Cache de ejemplo
-            $cacheKey = 'current_time';
-            if (!$redis->exists($cacheKey)) {
-                $currentTime = date('Y-m-d H:i:s');
-                $redis->setex($cacheKey, 5, $currentTime);
-                $source = "(generado nuevo)";
-            } else {
-                $currentTime = $redis->get($cacheKey);
-                $source = "(desde cache Redis)";
-            }
-            
-            echo "<p>🕐 Hora actual $source: <strong>$currentTime</strong></p>";
-            
-            echo "<p><a href='http://localhost:8082' target='_blank'>📊 Abrir Dashboard de Redis (puerto 8082)</a></p>";
-            
-        } else {
-            echo "<p style='color: orange;'>⚠️ Redis no disponible</p>";
-        }
-    } catch (Exception $e) {
-        echo "<p style='color: orange;'>⚠️ Error Redis: " . $e->getMessage() . "</p>";
-    }
-} else {
-    echo "<p style='color: orange;'>⚠️ Extensión Redis no disponible</p>";
-}
-echo "</div>";
+        <!-- Carrito Promo -->
+        <div class="card mt-4 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Nueva Funcionalidad</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="display-1 mb-3">🛒</div>
+                <h5>Carrito de Compras</h5>
+                <p class="text-muted">Completo con Redis + PostgreSQL</p>
+                <a href="/cart.php" class="btn btn-warning btn-lg w-100">
+                    <i class="fas fa-rocket me-2"></i>Probar Carrito
+                </a>
+                <p class="small text-muted mt-2 mb-0">
+                    <i class="fas fa-lightbulb me-1"></i>Redis para temporal + PostgreSQL para permanente
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+<?php
+$content = ob_get_clean();
 
-// ========== SECCIÓN POSTGRESQL ==========
-echo "<div class='section'>";
-echo "<h2 style='color: #27ae60;'>🗄️ PostgreSQL Database</h2>";
-
-try {
-    // Ya tenemos $pdo desde includes/connection.php
-    echo "<p style='color: green;'>✅ ¡Conexión a PostgreSQL exitosa! (usando conexión centralizada)</p>";
-    
-    // Crear tabla visitas si no existe (por si acaso)
-    $pdo->exec("CREATE TABLE IF NOT EXISTS visitas (
-        id SERIAL PRIMARY KEY,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ip VARCHAR(45),
-        user_agent TEXT
-    )");
-    
-    // Insertar visita actual
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Desconocido';
-    
-    $stmt = $pdo->prepare("INSERT INTO visitas (ip, user_agent) VALUES (?, ?)");
-    $stmt->execute([$ip, $userAgent]);
-    
-    // Contar visitas
-    $count = $pdo->query("SELECT COUNT(*) as total FROM visitas")->fetch()['total'];
-    echo "<p>📊 Total de visitas (PostgreSQL): <strong>$count</strong></p>";
-    
-    // Mostrar últimas 5 visitas
-    $visitas = $pdo->query("SELECT fecha, ip FROM visitas ORDER BY fecha DESC LIMIT 5")->fetchAll();
-    
-    echo "<h4>Últimas visitas:</h4><ul>";
-    foreach ($visitas as $visita) {
-        echo "<li>" . $visita['fecha'] . " - " . $visita['ip'] . "</li>";
-    }
-    echo "</ul>";
-    
-    // ========== MOSTRAR PRODUCTOS ==========
-    echo "<h3>🛍️ Productos Disponibles</h3>";
-    
-    $stmt = $pdo->query("
-        SELECT id, nombre, descripcion, precio, categoria, stock, imagen_url 
-        FROM productos 
-        WHERE stock > 0 
-        ORDER BY creado_en DESC
-    ");
-    $productos = $stmt->fetchAll();
-    
-    if (count($productos) > 0) {
-        echo "<table border='1' cellpadding='8' cellspacing='0' style='border-collapse: collapse; width: 100%;'>";
-        echo "<tr style='background-color: #4CAF50; color: white;'>";
-        echo "<th>ID</th><th>Producto</th><th>Descripción</th><th>Precio</th><th>Categoría</th><th>Stock</th>";
-        echo "</tr>";
-        
-        foreach ($productos as $producto) {
-            $colorFila = $producto['stock'] > 20 ? '' : 'background-color: #FFF3CD;';
-            echo "<tr style='$colorFila'>";
-            echo "<td>" . htmlspecialchars($producto['id']) . "</td>";
-            echo "<td><strong>" . htmlspecialchars($producto['nombre']) . "</strong> " . htmlspecialchars($producto['imagen_url']) . "</td>";
-            echo "<td>" . htmlspecialchars(substr($producto['descripcion'], 0, 50)) . "...</td>";
-            echo "<td style='color: #E91E63; font-weight: bold;'>$" . number_format($producto['precio'], 2) . "</td>";
-            echo "<td>" . htmlspecialchars($producto['categoria']) . "</td>";
-            echo "<td style='color: " . ($producto['stock'] > 10 ? 'green' : 'orange') . ";'>" . htmlspecialchars($producto['stock']) . "</td>";
-            echo "</tr>";
-        }
-        echo "</table>";
-        echo "<p>Total de productos: <strong>" . count($productos) . "</strong></p>";
-    } else {
-        echo "<p style='color: orange;'>⚠️ No hay productos en la base de datos.</p>";
-        echo "<p><a href='/test-connection.php' target='_blank'>Probar conexión</a></p>";
-    }
-    
-    echo "<p><a href='http://localhost:8081' target='_blank'>📈 Abrir pgAdmin (puerto 8081)</a></p>";
-    
-} catch (PDOException $e) {
-    echo "<p style='color: red;'>❌ Error PostgreSQL: " . $e->getMessage() . "</p>";
-    echo "<p><strong>Credenciales usadas:</strong></p>";
-    echo "<ul>";
-    echo "<li>Host: " . getenv('DB_HOST') . "</li>";
-    echo "<li>DB: " . getenv('DB_NAME') . "</li>";
-    echo "<li>User: " . getenv('DB_USER') . "</li>";
-    echo "</ul>";
-    echo "<p><a href='/test-connection.php' target='_blank'>🔧 Probar configuración</a></p>";
-}
-echo "</div>";
-
-// ========== SECCIÓN INFORMACIÓN ==========
-echo "<div class='section'>";
-echo "<h2 style='color: #2980b9;'>📊 Sistema</h2>";
-
-echo "<p>🐋 Contenedores corriendo: <strong>5</strong></p>";
-echo "<p>🔄 PHP Version: " . phpversion() . "</p>";
-echo "<p>🔧 Servidor: " . ($_SERVER['SERVER_SOFTWARE'] ?? 'Apache') . "</p>";
-
-// Info Redis
-if (extension_loaded('redis')) {
-    echo "<p>🧠 Extensión Redis: <span style='color: green;'>✅ Instalada</span></p>";
-} else {
-    echo "<p>�� Extensión Redis: <span style='color: red;'>❌ No disponible</span></p>";
-}
-
-echo "<p>💾 Memoria usada: " . round(memory_get_usage() / 1024 / 1024, 2) . " MB</p>";
-
-// Info PostgreSQL PDO
-echo "<p>🗄️ PDO PostgreSQL: <span style='color: green;'>✅ Disponible</span></p>";
-echo "<p>🔗 Conexión DB: " . getenv('DB_HOST') . "/" . getenv('DB_NAME') . "</p>";
-echo "</div>";
-
-// ========== ENLACES RÁPIDOS ==========
-echo "<div class='section'>";
-echo "<h3>🔗 Accesos Rápidos:</h3>";
-echo "<ul>";
-echo "<li><a href='http://localhost:8080' target='_blank'>�� Esta App (puerto 8080)</a></li>";
-echo "<li><a href='http://localhost:8080/test-connection.php' target='_blank'>🔌 Probar Conexión DB</a></li>";
-echo "<li><a href='http://localhost:8080/cart.php' target='_blank'>🛒 Carrito de Compras</a></li>";
-echo "<li><a href='http://localhost:8081' target='_blank'>🐘 pgAdmin - Admin PostgreSQL</a></li>";
-echo "<li><a href='http://localhost:8082' target='_blank'>🧠 Redis Admin - Dashboard Redis</a></li>";
-echo "<li><a href='http://localhost:5432' target='_blank'>🗄️ PostgreSQL directo (puerto 5432)</a></li>";
-echo "<li><a href='http://localhost:6379' target='_blank'>⚡ Redis directo (puerto 6379)</a></li>";
-echo "</ul>";
-echo "</div>";
-
-echo "</div>"; // Cierre del container
-echo "</body>";
-echo "</html>";
+// Incluir el layout
+require_once __DIR__ . '/includes/layout.php';
+?>

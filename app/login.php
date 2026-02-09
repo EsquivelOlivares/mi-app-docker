@@ -1,5 +1,6 @@
 <?php
-ob_start(); // Buffer para headers
+// login.php - Versión con Bootstrap
+ob_start();
 session_start();
 require_once __DIR__ . "/config/database.php";
 require_once __DIR__ . "/auth/models/User.php";
@@ -91,161 +92,235 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
         }
     }
 }
-// Continuar con el HTML...
-ob_end_flush();
+
+// Configurar variables para el layout
+$pageTitle = "Iniciar Sesión - Mi App Docker";
+$currentUser = null; // Para el nav
+
+// Capturar contenido específico de login
+ob_start();
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - Mi App Docker</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: Arial, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            width: 100%;
-            max-width: 900px;
-            display: flex;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            border-radius: 15px;
-            overflow: hidden;
-        }
-        .left-section {
-            flex: 1;
-            background: white;
-            padding: 40px;
-        }
-        .right-section {
-            flex: 1;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            padding: 40px;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        h1 { 
-            color: #333; 
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-        h2 {
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-        .form-group { margin-bottom: 20px; }
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
-            color: #555;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        button:hover {
-            transform: translateY(-2px);
-        }
-        .btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #c33;
-        }
-        .success {
-            background: #efe;
-            color: #3a3;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #3a3;
-        }
-        .credentials {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="left-section">
-            <h1>🔐 Sistema de Autenticación JWT</h1>
+<div class="row justify-content-center login-container">
+    <div class="col-md-8 col-lg-6">
+        <div class="card login-card shadow">
+            <div class="card-header text-center">
+                <h3 class="mb-0"><i class="fas fa-lock me-2"></i>Autenticación JWT</h3>
+            </div>
             
-            <?php if ($error): ?>
-                <div class="error"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-            
-            <?php if ($success): ?>
-                <div class="success"><?php echo htmlspecialchars($success); ?></div>
-            <?php endif; ?>
-            
-            <h2>🔑 Iniciar Sesión</h2>
-            <form method="post">
-                <input type="hidden" name="action" value="login">
-                <div class="form-group">
-                    <label for="login-username">Usuario o Email</label>
-                    <input type="text" id="login-username" name="username" placeholder="admin o admin@tienda.com" required>
+            <div class="card-body p-4">
+                <?php if ($error): ?>
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error); ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if ($success): ?>
+                    <div class="alert alert-success alert-dismissible fade show">
+                        <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success); ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- Pestañas Login/Registro -->
+                <ul class="nav nav-tabs nav-fill mb-4" id="authTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button">
+                            <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button">
+                            <i class="fas fa-user-plus me-2"></i>Registrarse
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="authTabsContent">
+                    <!-- Tab Login -->
+                    <div class="tab-pane fade show active" id="login" role="tabpanel">
+                        <form method="post" class="needs-validation" novalidate>
+                            <input type="hidden" name="action" value="login">
+                            
+                            <div class="mb-3">
+                                <label for="login-username" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Usuario o Email
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-at"></i></span>
+                                    <input type="text" class="form-control" id="login-username" name="username" 
+                                           placeholder="admin o admin@tienda.com" required>
+                                    <div class="invalid-feedback">
+                                        Por favor ingresa tu usuario o email.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="login-password" class="form-label">
+                                    <i class="fas fa-key me-1"></i>Contraseña
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="login-password" name="password" 
+                                           placeholder="Admin123!" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <div class="invalid-feedback">
+                                        Por favor ingresa tu contraseña.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Ingresar al Sistema
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-4">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white py-2">
+                                    <i class="fas fa-crown me-2"></i>Credenciales de Prueba
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><strong>Usuario:</strong></p>
+                                            <code class="d-block p-2 bg-light rounded">admin</code>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><strong>Contraseña:</strong></p>
+                                            <code class="d-block p-2 bg-light rounded">Admin123!</code>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-center">
+                                        <small class="text-muted">
+                                            <i class="fas fa-shield-alt me-1"></i>Rol: Administrador Completo
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Registro -->
+                    <div class="tab-pane fade" id="register" role="tabpanel">
+                        <form method="post" class="needs-validation" novalidate>
+                            <input type="hidden" name="action" value="register">
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="reg-username" class="form-label">
+                                        <i class="fas fa-user-tag me-1"></i>Nombre de usuario
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">@</span>
+                                        <input type="text" class="form-control" id="reg-username" name="username" 
+                                               placeholder="juan123" required minlength="3">
+                                        <div class="invalid-feedback">
+                                            Mínimo 3 caracteres.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="reg-email" class="form-label">
+                                        <i class="fas fa-envelope me-1"></i>Email
+                                    </label>
+                                    <input type="email" class="form-control" id="reg-email" name="email" 
+                                           placeholder="juan@example.com" required>
+                                    <div class="invalid-feedback">
+                                        Ingresa un email válido.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="reg-fullname" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Nombre completo
+                                </label>
+                                <input type="text" class="form-control" id="reg-fullname" name="full_name" 
+                                       placeholder="Juan Pérez" required>
+                                <div class="invalid-feedback">
+                                    Ingresa tu nombre completo.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="reg-password" class="form-label">
+                                    <i class="fas fa-key me-1"></i>Contraseña
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="reg-password" name="password" 
+                                           placeholder="Mínimo 6 caracteres" required minlength="6">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <div class="invalid-feedback">
+                                        Mínimo 6 caracteres.
+                                    </div>
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>La contraseña debe tener al menos 6 caracteres.
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-user-plus me-2"></i>Crear Cuenta
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="login-password">Contraseña</label>
-                    <input type="password" id="login-password" name="password" placeholder="Admin123!" required>
-                </div>
-                <button type="submit">✅ Ingresar</button>
-            </form>
+            </div>
             
-            <div class="credentials">
-                <h3>👑 Credenciales de Prueba:</h3>
-                <p><strong>Usuario:</strong> admin</p>
-                <p><strong>Contraseña:</strong> Admin123!</p>
+            <div class="card-footer text-center text-muted">
+                <small>
+                    <i class="fas fa-shield-alt me-1"></i>Sistema seguro con JWT (JSON Web Tokens)
+                </small>
             </div>
         </div>
         
-        <div class="right-section">
-            <h2>🚀 Mi App Docker</h2>
-            <p>Sistema de autenticación con:</p>
-            <ul style="margin-top: 20px; list-style: none;">
-                <li>✅ JWT (JSON Web Tokens)</li>
-                <li>✅ PostgreSQL + Redis</li>
-                <li>✅ Roles y permisos</li>
-                <li>✅ Carrito de compras</li>
-            </ul>
+        <div class="text-center mt-4">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <i class="fas fa-database fa-2x text-primary mb-2"></i>
+                            <h6>PostgreSQL</h6>
+                            <small class="text-muted">Base de datos principal</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <i class="fas fa-bolt fa-2x text-danger mb-2"></i>
+                            <h6>Redis</h6>
+                            <small class="text-muted">Caché y carrito</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <i class="fas fa-lock fa-2x text-success mb-2"></i>
+                            <h6>JWT Auth</h6>
+                            <small class="text-muted">Autenticación segura</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+<?php
+$content = ob_get_clean();
+
+// Incluir el layout
+require_once __DIR__ . '/includes/layout.php';
+?>
