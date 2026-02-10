@@ -37,3 +37,5 @@ dump.rdb
 # Runtime
 tmp/
 temp/
+*.backup.*
+app/*.backup.*
